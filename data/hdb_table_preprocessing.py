@@ -1,5 +1,6 @@
 import csv
 import os
+import requests
 
 def readRawDataFromFile(filePath):
 	rows = []
@@ -18,7 +19,7 @@ def readRawDataFromFile(filePath):
 							month = row[0].split('-')[1]
 
 							# assemble location query
-							location_query = "{town}, blk {blk}".format(town = row[1], blk = row[3])
+							location_query = "{town} {blk}".format(town = row[4], blk = row[3])
 
 							# floor area in sqm
 							floor_area = row[6]
@@ -107,12 +108,28 @@ def resolveLocationInfo():
 						locationInfo.append(row[2])
 				line_count += 1
 
-	locationInfo = list(map(lambda x: [x], locationInfo))
+	existingQueries = []
+	with open('hdb_location_query.csv') as file:
+			csv_reader = csv.reader(file, delimiter=',')
+			for row in csv_reader:
+				existingQueries.append(row[0])
 
-	print('pending execution of %d' %  len(locationInfo))
-	if os.path.exists("hdb_location_query.csv"):
-		os.remove("hdb_location_query.csv")
-
-	with open('hdb_location_query.csv', 'w', newline='') as file:
-		writer = csv.writer(file)
-		writer.writerows(locationInfo)
+	pendingQueries = []
+	for info in locationInfo:
+		if info not in existingQueries:
+			pendingQueries.append(info)
+	
+	with open('hdb_location_query.csv', 'a', newline='') as file:
+			csv_writer = csv.writer(file)
+			for info in pendingQueries:
+				try:
+					ploads = {'searchVal':info, 'returnGeom':'Y', 'getAddrDetails':'Y'}
+					r = requests.get('http://developers.onemap.sg/commonapi/search',params=ploads).json()
+					if r['found'] > 0:
+						result = r['results'][0]
+						csv_writer.writerow([info, result['POSTAL'], result['LATITUDE'], result['LONGITUDE']])
+						print('success in execution query: %s' % info)
+					else:
+						print('error in execution query: %s' % info)
+				except:
+					print('exception in execution query: %s' % info)
