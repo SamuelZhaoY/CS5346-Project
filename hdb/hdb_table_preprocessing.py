@@ -143,19 +143,20 @@ def appendCartesianCoordinate():
 	with open('hdb_location_query.csv') as file:
 			csv_reader = csv.reader(file, delimiter=',')
 			for row in csv_reader:
-				existingQueries.append(row[0])
+				existingQueries.append(row)
 
-	# setup your projections
-	crs_wgs = proj.Proj(init='epsg:4326') # assuming you're using WGS84 geographic
-	crs_bng = proj.Proj(init='epsg:3414') # use a locally appropriate projected CRS
+	# # setup your projections
+	crs_wgs = proj.Proj('epsg:4326') # assuming you're using WGS84 geographic
+	crs_bng = proj.Proj('epsg:3414') # use a locally appropriate projected CRS
 
-	with open('hdb_location_query.csv', 'w', newline='') as file:
+	with open('hdb_location_query_with_cartesian.csv', 'w', newline='') as file:
 			csv_writer = csv.writer(file)
 
 			for line in existingQueries:
 				input_lon = line[2]
 				input_lat = line[3]
+				print('transform %s' % line)
 				x, y = proj.transform(crs_wgs, crs_bng, input_lon, input_lat)
-				line[4] = x
-				line[5] = y
+				line.append(x)
+				line.append(y)
 				csv_writer.writerow(line)
