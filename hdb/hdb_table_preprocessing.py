@@ -1,6 +1,7 @@
 import csv
 import os
 import requests
+import pyproj as proj
 
 def readRawDataFromFile(filePath):
 	rows = []
@@ -133,3 +134,28 @@ def resolveLocationInfo():
 						print('error in execution query: %s' % info)
 				except:
 					print('exception in execution query: %s' % info)
+
+# covert lon, lat to cartesian location
+# python -c 'import hdb_table_preprocessing; hdb_table_preprocessing.appendCartesianCoordinate()'
+def appendCartesianCoordinate():
+
+	existingQueries = []
+	with open('hdb_location_query.csv') as file:
+			csv_reader = csv.reader(file, delimiter=',')
+			for row in csv_reader:
+				existingQueries.append(row[0])
+
+	# setup your projections
+	crs_wgs = proj.Proj(init='epsg:4326') # assuming you're using WGS84 geographic
+	crs_bng = proj.Proj(init='epsg:3414') # use a locally appropriate projected CRS
+
+	with open('hdb_location_query.csv', 'w', newline='') as file:
+			csv_writer = csv.writer(file)
+
+			for line in existingQueries:
+				input_lon = line[2]
+				input_lat = line[3]
+				x, y = proj.transform(crs_wgs, crs_bng, input_lon, input_lat)
+				line[4] = x
+				line[5] = y
+				csv_writer.writerow(line)
