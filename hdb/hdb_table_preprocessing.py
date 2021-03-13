@@ -184,6 +184,7 @@ def getAverageTransactions():
 
 			for index in existingQueries:
 				existingQueries[index][6] = round(existingQueries[index][6]/existingQueries[index][9],1)
+				existingQueries[index].pop(1)
 				csv_writer.writerow(existingQueries[index])
 
 
