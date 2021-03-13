@@ -70,22 +70,24 @@ def readRawDataFromFile(filePath):
 
 def parseRawData(): 
 
-	rows = [
-		[
-			'year', 
-			'month', 
-			'location_query', 
-			'floor_area', 
-			'tenure_type', 
-			'remaining_tenure', 
-			'transaction_price', 
-			'property_type', 
-			'no_of_bedroom'
-			]
-	]
+	# rows = [
+	# 	[
+	# 		'year', 
+	# 		'month', 
+	# 		'location_query', 
+	# 		'floor_area', 
+	# 		'tenure_type', 
+	# 		'remaining_tenure', 
+	# 		'transaction_price', 
+	# 		'property_type', 
+	# 		'no_of_bedroom'
+	# 		]
+	# ]
 
-	rows += readRawDataFromFile('./HDB/resale-flat-prices-based-on-registration-date-from-jan-2015-to-dec-2016.csv')
-	rows += readRawDataFromFile('./HDB/resale-flat-prices-based-on-registration-date-from-jan-2017-onwards.csv')
+	rows = []
+
+	rows += readRawDataFromFile('./source/resale-flat-prices-based-on-registration-date-from-jan-2015-to-dec-2016.csv')
+	rows += readRawDataFromFile('./source/resale-flat-prices-based-on-registration-date-from-jan-2017-onwards.csv')
 
 	if os.path.exists("hdb_transactions.csv"):
 		os.remove("hdb_transactions.csv")
@@ -160,3 +162,31 @@ def appendCartesianCoordinate():
 				line.append(x)
 				line.append(y)
 				csv_writer.writerow(line)
+
+# python -c 'import hdb_table_preprocessing; hdb_table_preprocessing.getAverageTransactions()'
+def getAverageTransactions():
+	# {{location_query}_#{year}_#{no_of_bedroom}:row}
+	existingQueries = {}
+	with open('hdb_transactions.csv') as file:
+			csv_reader = csv.reader(file, delimiter=',')
+			for row in csv_reader:
+				index = "{unit}_{year}_{type}".format(unit = row[2], year = row[0], type= row[8])
+				if index not in existingQueries:
+					existingQueries[index] = row
+					existingQueries[index][6] = float(row[6])
+					existingQueries[index].append(1)
+				else:
+					existingQueries[index][9] += 1
+					existingQueries[index][6] += float(row[6])
+	
+	with open('hdb_transactions_average.csv', 'w', newline='') as file:
+			csv_writer = csv.writer(file)
+
+			for index in existingQueries:
+				existingQueries[index][6] = round(existingQueries[index][6]/existingQueries[index][9],1)
+				csv_writer.writerow(existingQueries[index])
+
+
+			
+
+
