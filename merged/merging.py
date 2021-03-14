@@ -84,6 +84,9 @@ def extractAndMergeHDBData():
 
 	with open('merging.csv', 'w', newline='') as file:
 		writer = csv.writer(file)
+
+		writer.writerow(['property_name', 'year', 'tenture_type', 'postal_code', 'year_of_completion', 'number_of_bedroom', 'remaining_tenures', 'avg_price_psm', 'district', 'property_type', 'long', 'lat', 'x', 'y'])
+
 		for average_transaction_history in average_transaction_histories:
 
 			if average_transaction_history[1] not in hdb_location_queries:
@@ -194,7 +197,7 @@ def extractAndMergeCondoData():
 def mergeTransactionDataFromHDBAndCondo(): 
 
 	# target row fields 
-	# property_name, year, tenture_type, postal_code, year_of_completion, number_of_bedroom, remaining_tenures, avg_price_psm, district, property_type, lat, long, x, y
+	# property_name, year, tenture_type, postal_code, year_of_completion, number_of_bedroom, remaining_tenures, avg_price_psm, district, property_type, long, lat, x, y
 
 	# extract and merge hdb data.
 	extractAndMergeHDBData()
