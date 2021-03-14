@@ -37,6 +37,10 @@ def process():
 			data['total_transaction_price'] = data.get('total_transaction_price', 0) + float(row['transaction_price'])
 			data['number_of_transaction'] = data.get('number_of_transaction', 0) + 1
 			data['price_per_sqm'] = data.get('price_per_sqm', 0) + float(row['transaction_price']) / float(row['floor_area'])
+			data['remaining_tenure'] = row.get('remaining_tenure', '-')
+			data['tenure_type'] = row.get('tenure_type','99')
+			data['property_type'] = row.get('property_type','Condo')
+
 
 			if row['year'] in mappings[row['location_query']]:
 				mappings[row['location_query']][row['year']][room_number] = data
@@ -45,14 +49,14 @@ def process():
   
 	with open('condo_transactions_by_year.csv', 'w', newline='') as file:
 		writer = csv.writer(file)
-		writer.writerow(["location_query", "year", "avg_transaction_price", "avg_price_per_sqm", "number_of_transaction"])
+		writer.writerow(["location_query", "year", "no_of_bedroom", "tenure_type" ,"remaining_tenure", "property_type", "avg_transaction_price", "avg_price_per_sqm", "number_of_transaction"])
     
 		for location, yearly_data in mappings.items():
 			for year, unit_data in yearly_data.items():
 				for room_type, txn_data in unit_data.items():
 					avg = round(txn_data['total_transaction_price'] / txn_data['number_of_transaction'])
 					avg_price_per_sqm = round(txn_data['price_per_sqm'] / txn_data['number_of_transaction'])
-					writer.writerow([location, year, room_type , avg, avg_price_per_sqm, txn_data['number_of_transaction']])
+					writer.writerow([location, year, room_type , txn_data["tenure_type"], txn_data["remaining_tenure"], txn_data["property_type"] , avg, avg_price_per_sqm, txn_data['number_of_transaction']])
 
 
 if __name__ == "__main__":

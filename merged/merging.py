@@ -99,9 +99,8 @@ def extractAndMergeHDBData():
 				'99',
 				postal_code,
 				year_of_completion,
-				str(average_transaction_history[7]),
-				average_transaction_history[5],
-				average_transaction_history[2],
+				str(average_transaction_history[7]), # number of bedroom
+				remaining_tenure, # remaining tenure
 				round( float(average_transaction_history[5]) / float(average_transaction_history[2]), 1),
 				convertPostalCodeToAreaCode(postal_code),
 				'HDB',
@@ -112,13 +111,93 @@ def extractAndMergeHDBData():
 			]
 			writer.writerow(record)
 	
+
+def extractAndMergeCondoData():
+ 	# location_key,location_query,postal_code,latitude,longitude
+	condo_location_queries = {}
+
+	# location_query,year,no_of_bedroom,tenure_type,remaining_tenure,property_type,avg_transaction_price,avg_price_per_sqm,number_of_transaction
+	average_transaction_histories = []
+
+	with open('../condo/condo_transactions_by_year.csv') as file:
+			csv_reader = csv.reader(file, delimiter=',')
+			count = 0
+			for row in csv_reader:
+				# skip header
+				count +=1 
+				if count == 1:
+					continue
+				average_transaction_histories.append(row)
+
+	with open('../condo/condo_location_query.csv') as file:
+			csv_reader = csv.reader(file, delimiter=',')
+			count = 0
+			for row in csv_reader:
+				# skip header
+				count +=1 
+				if count == 1:
+					continue
+				condo_location_queries[row[0]] = row
+
+	# # setup your projections
+	crs_wgs = proj.Proj('epsg:4326') # assuming you're using WGS84 geographic
+	crs_bng = proj.Proj('epsg:3414') # use a locally appropriate projected CRS
+
+	for key in condo_location_queries:
+		condo_location_query = condo_location_queries[key]
+		input_lon = condo_location_query[3]
+		input_lat = condo_location_query[4]
+					
+		x, y = proj.transform(crs_wgs, crs_bng, input_lon, input_lat)
+		condo_location_query.append(x)
+		condo_location_query.append(y)
+		print('transform %s' % condo_location_query)
+
+	with open('merging.csv', 'a', newline='') as file:
+			writer = csv.writer(file)
+			for average_transaction_history in average_transaction_histories:
+
+					if average_transaction_history[0] not in condo_location_queries:
+						continue
+					
+					postal_code = condo_location_queries[average_transaction_history[0]][2]
+			
+					# year_of_completion = int(average_transaction_history[0]) - (99 - remaining_tenure)
+
+					input_lon = condo_location_queries[average_transaction_history[0]][3]
+					input_lat = condo_location_queries[average_transaction_history[0]][4]
+					
+					x, y = proj.transform(crs_wgs, crs_bng, input_lon, input_lat)
+
+					record = [
+						average_transaction_history[0],
+						average_transaction_history[1],
+						average_transaction_history[3], # tenure
+						postal_code,
+						"-", # completion year
+						average_transaction_history[2], # number of bedroom
+						average_transaction_history[4], # remaining tenure
+						average_transaction_history[7], # psm
+						convertPostalCodeToAreaCode(postal_code),
+						average_transaction_history[5],
+						condo_location_queries[average_transaction_history[0]][3],
+						condo_location_queries[average_transaction_history[0]][4],
+						condo_location_queries[average_transaction_history[0]][5],
+						condo_location_queries[average_transaction_history[0]][6],
+					]
+					writer.writerow(record)
+
+
 # execute the following to load the hdb csv to our desired data format.
 # python -c 'import merging; merging.mergeTransactionDataFromHDBAndCondo()'
 
 def mergeTransactionDataFromHDBAndCondo(): 
 
 	# target row fields 
-	# property_name, year, tenture_type, postal_code, year_of_completion, number_of_bedroom, remaining_tenures, floor_area, avg_price_psm, district, property_type, lat, long, x, y
+	# property_name, year, tenture_type, postal_code, year_of_completion, number_of_bedroom, remaining_tenures, avg_price_psm, district, property_type, lat, long, x, y
 
-	# extract and merge hdb data
+	# extract and merge hdb data.
 	extractAndMergeHDBData()
+
+	# extract and merge condo data.
+	extractAndMergeCondoData()
