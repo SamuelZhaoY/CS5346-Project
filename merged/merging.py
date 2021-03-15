@@ -2,6 +2,7 @@ import csv
 import os
 import requests
 import pyproj as proj
+import math
 
 def convertPostalCodeToAreaCode(postalCode):
 	topTwoDigit = postalCode[:2]
@@ -345,3 +346,91 @@ def reduceToRemoveYears():
 
 				if price_trending_data[key][0] != '0.0' or price_trending_data[key][1] != '0.0':
 					csv_writer.writerow(line)
+
+# Clean localization data 
+# python -c 'import merging; merging.cleanResourceData()'
+def cleanResourceData():
+		# setup your projections
+		crs_wgs = proj.Proj('epsg:4326') # assuming you're using WGS84 geographic
+		crs_bng = proj.Proj('epsg:3414') # use a locally appropriate projected CRS
+
+		# write hawker center
+		with open('../etc/hawker-centres-kml.csv') as file:
+			csv_reader = csv.reader(file, delimiter=',')
+			with open('hawker-center-location.csv', 'w', newline='') as targetFile:
+				csv_writer = csv.writer(targetFile)
+				count = 0
+				for line in csv_reader:
+					count += 1
+					if count == 1:
+						continue
+				
+					input_lon = line[1]
+					input_lat = line[0]
+					
+					x, y = proj.transform(crs_wgs, crs_bng, input_lon, input_lat)
+					csv_writer.writerow([line[2], x, y])
+
+		# write car park
+		with open('../etc/hdb-carpark-information.csv') as file:
+			csv_reader = csv.reader(file, delimiter=',')
+			with open('car-park-location.csv', 'w', newline='') as targetFile:
+				csv_writer = csv.writer(targetFile)
+				count = 0
+				for line in csv_reader:
+					count += 1
+					if count == 1:
+						continue
+					csv_writer.writerow([line[0], line[2], line[3]])
+
+# Calculate Adjacent Facilities
+# python -c 'import merging; merging.calculateAdjacentFacalaties()'
+def calculateAdjacentFacalaties():
+	# get hawker center
+	hawker_centers = []
+	with open('hawker-center-location.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		for line in csv_reader:
+			hawker_centers.append(line)
+
+	# get carpark 
+	carparks = []
+	with open('car-park-location.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		for line in csv_reader:
+			carparks.append(line)
+
+	# get transaction records
+	transaction_records = []
+	with open('merged_data_with_pricing_trend.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		for line in csv_reader:
+			transaction_records.append(line)
+
+	with open('merged_data_with_pricing_trend_and_location_filter.csv', 'w', newline='') as targetFile:
+		csv_writer = csv.writer(targetFile)
+		for record in transaction_records:
+			# calculate car park number
+			carpark_within_1km = 0
+			carpark_within_3km = 0
+			hawker_within_1km = 0
+			hawker_within_3km = 0
+
+			for carpark in carparks:
+				distance = math.sqrt(math.pow(float(carpark[1]) - float(record[11]),2) + math.pow(float(carpark[2]) - float(record[12]),2))
+				if distance <= 1000:
+					carpark_within_1km += 1
+				if distance <= 3000:
+					carpark_within_3km += 1
+
+			# calculate hawker center number
+			for hawker_center in hawker_centers:
+				distance = math.sqrt(math.pow(float(hawker_center[1]) - float(record[11]),2) + math.pow(float(hawker_center[2]) - float(record[12]),2))
+				if distance <= 1000:
+					hawker_within_1km += 1
+				if distance <= 3000:
+					hawker_within_3km += 1
+			
+			record += [carpark_within_1km, carpark_within_3km, hawker_within_1km, hawker_within_3km]
+			print(record)
+			csv_writer.writerow(record)
