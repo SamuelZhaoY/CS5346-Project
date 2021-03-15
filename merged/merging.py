@@ -323,8 +323,11 @@ def reduceToRemoveYears():
 				key = "{property}-{no_bed}".format(property = line[0], no_bed = line[5])
 
 				if key not in property_transaction_data:
-					remaining_tenures = int(line[6]) - (2021 - int(line[1]))
-					line[6] = remaining_tenures # remaining tenture for 2021
+					if line[2] != 'Freehold':
+						remaining_tenures = int(line[6]) - (2021 - int(line[1]))
+						line[6] = remaining_tenures # remaining tenture for 2021
+					else:
+						line[6] = '-' 
 					line.pop(1)
 					property_transaction_data[key] = line
 		
