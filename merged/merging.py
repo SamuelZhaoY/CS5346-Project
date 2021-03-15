@@ -204,3 +204,141 @@ def mergeTransactionDataFromHDBAndCondo():
 
 	# extract and merge condo data.
 	extractAndMergeCondoData()
+
+
+# execute the following to load the hdb csv to our desired data format.
+# python -c 'import merging; merging.calculateCondoCompletionYear()'
+
+def calculateCondoCompletionYear():
+	with open('merging.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		with open('merging_condo_completion_year.csv', 'w', newline='') as targetFile:
+			csv_writer = csv.writer(targetFile)
+			count = 0
+			for line in csv_reader:
+				count += 1
+				if count == 1:
+					continue
+				
+				if line[9] == 'HDB':
+					csv_writer.writerow(line)
+					continue
+
+				if line[2] == '99' or line[2] == '999': 
+					completion_year = int(line[1]) - (int(line[2]) - int(line[6]))
+					line[4] = completion_year
+					csv_writer.writerow(line)
+					continue
+
+				csv_writer.writerow(line)
+
+# calculate short term/ long term trends
+
+# python -c 'import merging; merging.calculatePriceTriend()'
+def calculatePriceTriend():
+	with open('merging_condo_completion_year.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		with open('pricing_trends.csv', 'w', newline='') as targetFile:
+			csv_writer = csv.writer(targetFile)
+	
+			'''
+			# 
+			{
+				property_name: {
+					room_type: {
+						 recent: { total: xxx, count: xxx}   2019-21,
+						 shorterm: { total: xxx, count: xxx} 2017-2019,
+						 longterm: { total: xxx, count: xxx} 2015-2017
+					}
+				}
+			}
+			'''
+
+			count = 0
+			pricing_dict = {}
+			for line in csv_reader:
+				
+				if line[0] not in pricing_dict:
+					pricing_dict[line[0]] = {}
+				
+				if line[5] not in pricing_dict[line[0]]:
+					pricing_dict[line[0]][line[5]] = {
+						'recent': { 'total' : 0, 'count': 0},
+						'shorterm': { 'total' : 0, 'count': 0},
+						'longterm': { 'total' : 0, 'count': 0},
+					}
+				
+				if line[1] in ['2020', '2021']:
+					pricing_dict[line[0]][line[5]]['recent']['total'] += float(line[7])
+					pricing_dict[line[0]][line[5]]['recent']['count'] += 1
+				
+				if line[1] in ['2017', '2018', '2019']:
+					pricing_dict[line[0]][line[5]]['shorterm']['total'] += float(line[7])
+					pricing_dict[line[0]][line[5]]['shorterm']['count'] += 1
+				
+				if line[1] in ['2015', '2016']:
+					pricing_dict[line[0]][line[5]]['longterm']['total'] += float(line[7])
+					pricing_dict[line[0]][line[5]]['longterm']['count'] += 1
+			
+			for property_record in pricing_dict:
+				for unit in pricing_dict[property_record]:
+					record_unit = pricing_dict[property_record][unit]
+					recent_change = 0.0
+					long_term_change = 0.0
+					recent_price = 0.0
+
+					if record_unit['longterm']['total'] > 0:
+						recent_price = (float(record_unit['longterm']['total']) / record_unit['longterm']['count'])
+
+					if record_unit['shorterm']['total'] > 0:
+						recent_price = (float(record_unit['shorterm']['total']) / record_unit['shorterm']['count'])
+
+					if record_unit['recent']['total'] > 0:
+						recent_price = (float(record_unit['recent']['total']) / record_unit['recent']['count'])
+					
+					if record_unit['longterm']['total'] > 0 and record_unit['recent']['total'] > 0:
+						long_term_change = 100 * ( (float(record_unit['recent']['total']) / record_unit['recent']['count'])  / (float(record_unit['longterm']['total']) / record_unit['longterm']['count']) - 1.0)
+						long_term_change = round(long_term_change, 1)
+					
+					if record_unit['shorterm']['total'] > 0 and record_unit['recent']['total'] > 0:
+						recent_change = 100 * ( (float(record_unit['recent']['total']) / record_unit['recent']['count'])  / (float(record_unit['shorterm']['total']) / record_unit['shorterm']['count']) - 1.0)
+						recent_change = round(recent_change, 1)
+
+					csv_writer.writerow([property_record, unit, recent_change, long_term_change, round(recent_price, 1)])
+
+
+# Reduce Flats To Recent And Combine The Pricing Trend Data
+# python -c 'import merging; merging.reduceToRemoveYears()'
+def reduceToRemoveYears():
+    
+		# key: property-number_of_bedroom
+		# value: property_name, tenture_type, postal_code, year_of_completion, number_of_bedroom, remaining_tenures, avg_price_psm, district, property_type, long, lat, x, y
+		property_transaction_data = {}
+
+		# {property-number_of_bedroom: [recent_change, long_term_change, most_recent_price]}
+		price_trending_data = {}
+		with open('merging_condo_completion_year.csv') as file:
+			csv_reader = csv.reader(file, delimiter=',')
+			for line in csv_reader:
+				key = "{property}-{no_bed}".format(property = line[0], no_bed = line[5])
+
+				if key not in property_transaction_data:
+					remaining_tenures = int(line[6]) - (2021 - int(line[1]))
+					line[6] = remaining_tenures # remaining tenture for 2021
+					line.pop(1)
+					property_transaction_data[key] = line
+		
+		with open('pricing_trends.csv') as file:
+			csv_reader = csv.reader(file, delimiter=',')
+			for line in csv_reader:
+				key = "{property}-{no_bed}".format(property = line[0], no_bed = line[1])
+				price_trending_data[key] = [line[2], line[3], line[4]]
+
+		with open('merged_data_with_pricing_trend.csv', 'w', newline='') as targetFile:
+			csv_writer = csv.writer(targetFile)
+			for key in property_transaction_data:
+				line = property_transaction_data[key]
+				line += price_trending_data[key]
+
+				if price_trending_data[key][0] != '0.0' or price_trending_data[key][1] != '0.0':
+					csv_writer.writerow(line)
