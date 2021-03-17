@@ -412,25 +412,92 @@ def calculateAdjacentFacalaties():
 		for record in transaction_records:
 			# calculate car park number
 			carpark_within_1km = 0
-			carpark_within_3km = 0
+			carpark_within_2km = 0
 			hawker_within_1km = 0
-			hawker_within_3km = 0
+			hawker_within_2km = 0
 
 			for carpark in carparks:
 				distance = math.sqrt(math.pow(float(carpark[1]) - float(record[11]),2) + math.pow(float(carpark[2]) - float(record[12]),2))
 				if distance <= 1000:
 					carpark_within_1km += 1
-				if distance <= 3000:
-					carpark_within_3km += 1
+				if distance <= 2000:
+					carpark_within_2km += 1
 
 			# calculate hawker center number
 			for hawker_center in hawker_centers:
 				distance = math.sqrt(math.pow(float(hawker_center[1]) - float(record[11]),2) + math.pow(float(hawker_center[2]) - float(record[12]),2))
 				if distance <= 1000:
 					hawker_within_1km += 1
-				if distance <= 3000:
-					hawker_within_3km += 1
+				if distance <= 2000:
+					hawker_within_2km += 1
 			
-			record += [carpark_within_1km, carpark_within_3km, hawker_within_1km, hawker_within_3km]
+			record += [carpark_within_1km, carpark_within_2km, hawker_within_1km, hawker_within_2km]
 			print(record)
 			csv_writer.writerow(record)
+
+# Calculate Adjacent Facilities
+# python -c 'import merging; merging.filterInvalidData()'
+def filterInvalidData():
+	print('filtering invalid data')
+
+	# get raw data
+	raw_data = []
+	with open('merged_data_with_pricing_trend_and_location_filter.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		for line in csv_reader:
+			raw_data.append(line)
+
+	# filter and write
+	with open('output.csv', 'w', newline='') as targetFile:
+		csv_writer = csv.writer(targetFile)
+		for record in raw_data:
+			if record[2] == 'NIL':
+				continue
+
+			if record[3] != '-' and int(record[3]) < 1950:
+				continue
+
+			if record[7] == 'unkown':
+				continue
+
+			if float(record[15]) >= 30000.0:
+				continue
+
+			if float(record[16]) >= 10:
+				continue
+
+			if float(record[17]) >= 20:
+				continue
+
+			if float(record[18]) >= 5:
+				continue
+
+			if float(record[19]) >= 10:
+				continue
+
+			record[0] = record[0] + '-' + record[4]
+			csv_writer.writerow(record)
+
+'''
+
+	ANG MO KIO AVE 10 541,
+	99,
+	560541,
+	1981,
+	2,
+	59,
+	4313.7,
+	"Bishan, Ang Mo Kio",
+	HDB,
+	1.37392239168826,
+	103.855621371068,
+	39546.88471445934,
+	30482.02654878373,
+	-0.9,
+	-9.8,
+	4117.6,
+	0,
+	0,
+	2,
+	11
+'''
