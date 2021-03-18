@@ -435,6 +435,19 @@ def calculateAdjacentFacalaties():
 			print(record)
 			csv_writer.writerow(record)
 
+
+def binResourceRange(number):
+	if number < 3: 
+		return '0 - 2'
+	if number <= 5:
+		return '3 - 5'
+	if number <= 10:
+		return '6 - 10'
+	
+	return ' > 10'
+	
+
+
 # Calculate Adjacent Facilities
 # python -c 'import merging; merging.filterInvalidData()'
 def filterInvalidData():
@@ -463,41 +476,51 @@ def filterInvalidData():
 			if float(record[15]) >= 30000.0:
 				continue
 
-			if float(record[16]) >= 10:
+			record[16] = binResourceRange(int(record[16]))
+			record[17] = binResourceRange(int(record[17]))
+			record[18] = binResourceRange(int(record[18]))
+			record[19] = binResourceRange(int(record[19]))
+
+			# filter abnormal pricing trend
+			if float(record[13]) > 50.0 or float(record[13]) < -20.0:
 				continue
 
-			if float(record[17]) >= 20:
+			if float(record[14]) > 50.0 or float(record[14]) < -20.0:
 				continue
 
-			if float(record[18]) >= 5:
-				continue
+			# regulate tenure type 
+			if record[1] == '9999' or record[1] == '999999':
+				record[1] = 'Freehold'
+			if record[1] != 'Freehold' and record[1] != '99' and record[1] != '999':
+				record[1] = '99'
 
-			if float(record[19]) >= 10:
-				continue
+			if record[3] == '-':
+				record[3] = '1950'
+				record[5] = '999'
 
 			record[0] = record[0] + '-' + record[4]
 			csv_writer.writerow(record)
 
 '''
-
-	ANG MO KIO AVE 10 541,
+	LENGKONG TIGA 104,
 	99,
-	560541,
-	1981,
-	2,
-	59,
-	4313.7,
-	"Bishan, Ang Mo Kio",
+	410104,
+	1989,
+	4,
+	67,
+	5642.1,
+	"Geylang, Eunos",
 	HDB,
-	1.37392239168826,
-	103.855621371068,
-	39546.88471445934,
-	30482.02654878373,
-	-0.9,
-	-9.8,
-	4117.6,
-	0,
-	0,
+	1.32563496745021,
+	103.909815198327,
+	34207.62785367015,
+	36513.30337842315,
+	4.0,
+	3.8,
+	5913.2,
+	13,
+	59,
 	2,
-	11
+	5
+
 '''
