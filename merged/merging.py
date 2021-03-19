@@ -522,5 +522,90 @@ def filterInvalidData():
 	59,
 	2,
 	5
-
 '''
+
+def estimateRoomNumber(floor_area):
+	if floor_area < 50:
+		return "1"
+	elif floor_area < 70: 
+		return "2"
+	elif floor_area < 100:
+		return "3"
+	elif floor_area < 130:
+		return "4"
+	else:
+	 	return "5 or more"
+
+# Calculate Adjacent Facilities
+# python -c 'import merging; merging.analyseTradingFrequency()'
+def analyseTradingFrequency():
+	# get raw data
+	# property-name : {property-name, room-number, hdb/condo, district, transactions: { yearxxx: count }} from 2017 - 2021
+	raw_data = {}
+	with open('merged_data_with_pricing_trend_and_location_filter.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		for line in csv_reader:
+
+			if line[7] == 'unkown':
+				continue
+
+			propery_type = 'HDB' if line[8] == 'HDB' else 'Condo'
+			raw_data[line[0] + '-' + propery_type + '-' + line[4]] = {
+				'property-name' : line[0],
+				'room-number' : line[4],
+				'type' : propery_type,
+				'district' : line[7],
+				'transactions' : {
+					'2017' : 0,
+					'2018' : 0,
+					'2019' : 0,
+					'2020' : 0,
+					'2021' : 0
+				}
+			}
+	
+	# parse from HDB data and cumulate the yearly frequencies.
+	with open('../hdb/hdb_transactions.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		for row in csv_reader:
+			if int(row[0]) < 2017:
+				continue
+
+			key = row[2] + '-' + 'HDB' + '-' + row[8]
+
+			if key not in raw_data:
+				continue
+			
+			raw_data[key]['transactions'][row[0]] = raw_data[key]['transactions'][row[0]] + 1
+
+	# parse from condo data and cumulate the yearly frequencies.
+	with open('../condo/condo_transactions.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		count = 0
+		for row in csv_reader:
+			count += 1
+			if count == 1:
+				continue
+
+			if int(row[0]) < 2017:
+				continue
+
+			key = row[2] + '-' + 'Condo' + '-' + estimateRoomNumber(float(row[3]))
+
+			if key not in raw_data:
+				continue
+			
+			raw_data[key]['transactions'][row[0]] = raw_data[key]['transactions'][row[0]] + 1
+
+
+	# write to transaction frequence record file.
+	with open('transaction_frequency.csv', 'w', newline='') as targetFile:
+		csv_writer = csv.writer(targetFile)
+		for key in raw_data:
+			data = raw_data[key]
+			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2017'], '2017' ])
+			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2018'], '2018' ])
+			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2019'], '2019' ])
+			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2020'], '2020' ])
+			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2021'], '2021' ])
+			
