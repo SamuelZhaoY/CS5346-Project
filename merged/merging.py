@@ -233,6 +233,38 @@ def calculateCondoCompletionYear():
 
 				csv_writer.writerow(line)
 
+def _parse_room(room):
+	if room != "" and room[0] == "5":
+		return "5"
+	return room
+
+# Visualization for 03/04/05 in the doc.
+def processWithConstructionHistory():
+	with open('merging_condo_completion_year.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		with open('visual_345.csv', 'w', newline='') as targetFile:
+			csv_writer = csv.writer(targetFile, delimiter=',')
+			for line in csv_reader:
+				record = [
+					# Name
+					line[0],
+					# Completion Year
+					line[4], # ?: need to group years into a new column?
+					# Room (1,2,3,4,5)
+					_parse_room(line[5]),
+					# Tenure remaining
+					line[6],
+					# Avg_price_psm
+					line[7],
+					# Region / District
+					line[8],
+					# Type
+					line[9]
+				]
+				csv_writer.writerow(record)
+
+# processWithConstructionHistory()
+
 # calculate short term/ long term trends
 
 # python -c 'import merging; merging.calculatePriceTriend()'
