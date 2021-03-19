@@ -556,11 +556,11 @@ def analyseTradingFrequency():
 				'type' : propery_type,
 				'district' : line[7],
 				'transactions' : {
-					'2017' : 0,
-					'2018' : 0,
-					'2019' : 0,
-					'2020' : 0,
-					'2021' : 0
+					'2017' : [0,0,0,0,0,0,0,0,0,0,0,0],
+					'2018' : [0,0,0,0,0,0,0,0,0,0,0,0],
+					'2019' : [0,0,0,0,0,0,0,0,0,0,0,0],
+					'2020' : [0,0,0,0,0,0,0,0,0,0,0,0],
+					'2021' : [0,0,0,0,0,0,0,0,0,0,0,0]
 				}
 			}
 	
@@ -576,7 +576,7 @@ def analyseTradingFrequency():
 			if key not in raw_data:
 				continue
 			
-			raw_data[key]['transactions'][row[0]] = raw_data[key]['transactions'][row[0]] + 1
+			raw_data[key]['transactions'][row[0]][int(row[1]) - 1] = raw_data[key]['transactions'][row[0]][int(row[1]) - 1 ] + 1
 
 	# parse from condo data and cumulate the yearly frequencies.
 	with open('../condo/condo_transactions.csv') as file:
@@ -595,7 +595,7 @@ def analyseTradingFrequency():
 			if key not in raw_data:
 				continue
 			
-			raw_data[key]['transactions'][row[0]] = raw_data[key]['transactions'][row[0]] + 1
+			raw_data[key]['transactions'][row[0]][int(row[1]) - 1] = raw_data[key]['transactions'][row[0]][int(row[1]) - 1] + 1
 
 
 	# write to transaction frequence record file.
@@ -603,9 +603,9 @@ def analyseTradingFrequency():
 		csv_writer = csv.writer(targetFile)
 		for key in raw_data:
 			data = raw_data[key]
-			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2017'], '2017' ])
-			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2018'], '2018' ])
-			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2019'], '2019' ])
-			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2020'], '2020' ])
-			csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2021'], '2021' ])
+			for i in range(12):
+				csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2017'][i], str(i+1)+'/2017' ])
+				csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2018'][i], str(i+1)+'/2018' ])
+				csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2019'][i], str(i+1)+'/2019' ])
+				csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2020'][i], str(i+1)+'/2020' ])
 			
