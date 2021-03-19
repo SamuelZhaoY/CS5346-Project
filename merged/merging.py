@@ -467,6 +467,19 @@ def calculateAdjacentFacalaties():
 			print(record)
 			csv_writer.writerow(record)
 
+
+def binResourceRange(number):
+	if number < 3: 
+		return '0 - 2'
+	if number <= 5:
+		return '3 - 5'
+	if number <= 10:
+		return '6 - 10'
+	
+	return ' > 10'
+	
+
+
 # Calculate Adjacent Facilities
 # python -c 'import merging; merging.filterInvalidData()'
 def filterInvalidData():
@@ -495,41 +508,136 @@ def filterInvalidData():
 			if float(record[15]) >= 30000.0:
 				continue
 
-			if float(record[16]) >= 10:
+			record[16] = binResourceRange(int(record[16]))
+			record[17] = binResourceRange(int(record[17]))
+			record[18] = binResourceRange(int(record[18]))
+			record[19] = binResourceRange(int(record[19]))
+
+			# filter abnormal pricing trend
+			if float(record[13]) > 50.0 or float(record[13]) < -20.0:
 				continue
 
-			if float(record[17]) >= 20:
+			if float(record[14]) > 50.0 or float(record[14]) < -20.0:
 				continue
 
-			if float(record[18]) >= 5:
-				continue
+			# regulate tenure type 
+			if record[1] == '9999' or record[1] == '999999':
+				record[1] = 'Freehold'
+			if record[1] != 'Freehold' and record[1] != '99' and record[1] != '999':
+				record[1] = '99'
 
-			if float(record[19]) >= 10:
-				continue
+			if record[3] == '-':
+				record[3] = '1950'
+				record[5] = '999'
 
 			record[0] = record[0] + '-' + record[4]
 			csv_writer.writerow(record)
 
 '''
-
-	ANG MO KIO AVE 10 541,
+	LENGKONG TIGA 104,
 	99,
-	560541,
-	1981,
-	2,
-	59,
-	4313.7,
-	"Bishan, Ang Mo Kio",
+	410104,
+	1989,
+	4,
+	67,
+	5642.1,
+	"Geylang, Eunos",
 	HDB,
-	1.37392239168826,
-	103.855621371068,
-	39546.88471445934,
-	30482.02654878373,
-	-0.9,
-	-9.8,
-	4117.6,
-	0,
-	0,
+	1.32563496745021,
+	103.909815198327,
+	34207.62785367015,
+	36513.30337842315,
+	4.0,
+	3.8,
+	5913.2,
+	13,
+	59,
 	2,
-	11
+	5
 '''
+
+def estimateRoomNumber(floor_area):
+	if floor_area < 50:
+		return "1"
+	elif floor_area < 70: 
+		return "2"
+	elif floor_area < 100:
+		return "3"
+	elif floor_area < 130:
+		return "4"
+	else:
+	 	return "5 or more"
+
+# Calculate Adjacent Facilities
+# python -c 'import merging; merging.analyseTradingFrequency()'
+def analyseTradingFrequency():
+	# get raw data
+	# property-name : {property-name, room-number, hdb/condo, district, transactions: { yearxxx: count }} from 2017 - 2021
+	raw_data = {}
+	with open('merged_data_with_pricing_trend_and_location_filter.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		for line in csv_reader:
+
+			if line[7] == 'unkown':
+				continue
+
+			propery_type = 'HDB' if line[8] == 'HDB' else 'Condo'
+			raw_data[line[0] + '-' + propery_type + '-' + line[4]] = {
+				'property-name' : line[0],
+				'room-number' : line[4],
+				'type' : propery_type,
+				'district' : line[7],
+				'transactions' : {
+					'2017' : [0,0,0,0,0,0,0,0,0,0,0,0],
+					'2018' : [0,0,0,0,0,0,0,0,0,0,0,0],
+					'2019' : [0,0,0,0,0,0,0,0,0,0,0,0],
+					'2020' : [0,0,0,0,0,0,0,0,0,0,0,0],
+					'2021' : [0,0,0,0,0,0,0,0,0,0,0,0]
+				}
+			}
+	
+	# parse from HDB data and cumulate the yearly frequencies.
+	with open('../hdb/hdb_transactions.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		for row in csv_reader:
+			if int(row[0]) < 2017:
+				continue
+
+			key = row[2] + '-' + 'HDB' + '-' + row[8]
+
+			if key not in raw_data:
+				continue
+			
+			raw_data[key]['transactions'][row[0]][int(row[1]) - 1] = raw_data[key]['transactions'][row[0]][int(row[1]) - 1 ] + 1
+
+	# parse from condo data and cumulate the yearly frequencies.
+	with open('../condo/condo_transactions.csv') as file:
+		csv_reader = csv.reader(file, delimiter=',')
+		count = 0
+		for row in csv_reader:
+			count += 1
+			if count == 1:
+				continue
+
+			if int(row[0]) < 2017:
+				continue
+
+			key = row[2] + '-' + 'Condo' + '-' + estimateRoomNumber(float(row[3]))
+
+			if key not in raw_data:
+				continue
+			
+			raw_data[key]['transactions'][row[0]][int(row[1]) - 1] = raw_data[key]['transactions'][row[0]][int(row[1]) - 1] + 1
+
+
+	# write to transaction frequence record file.
+	with open('transaction_frequency.csv', 'w', newline='') as targetFile:
+		csv_writer = csv.writer(targetFile)
+		for key in raw_data:
+			data = raw_data[key]
+			for i in range(12):
+				csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2017'][i], str(i+1)+'/2017' ])
+				csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2018'][i], str(i+1)+'/2018' ])
+				csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2019'][i], str(i+1)+'/2019' ])
+				csv_writer.writerow([ data['property-name'], data['room-number'], data['type'], data['district'], data['transactions']['2020'][i], str(i+1)+'/2020' ])
+			
